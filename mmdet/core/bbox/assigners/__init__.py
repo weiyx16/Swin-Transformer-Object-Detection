@@ -7,10 +7,13 @@ from .grid_assigner import GridAssigner
 from .hungarian_assigner import HungarianAssigner
 from .max_iou_assigner import MaxIoUAssigner
 from .point_assigner import PointAssigner
+from .point_assigner_v2 import PointAssignerV2
+from .point_hm_assigner import PointHMAssigner
+from .atss_assigner_v2 import ATSSAssignerV2
 from .region_assigner import RegionAssigner
 
 __all__ = [
     'BaseAssigner', 'MaxIoUAssigner', 'ApproxMaxIoUAssigner', 'AssignResult',
     'PointAssigner', 'ATSSAssigner', 'CenterRegionAssigner', 'GridAssigner',
-    'HungarianAssigner', 'RegionAssigner'
+    'HungarianAssigner', 'RegionAssigner', 'PointAssignerV2', 'PointHMAssigner', 'ATSSAssignerV2'
 ]

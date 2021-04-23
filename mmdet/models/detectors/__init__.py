@@ -18,6 +18,8 @@ from .nasfcos import NASFCOS
 from .paa import PAA
 from .point_rend import PointRend
 from .reppoints_detector import RepPointsDetector
+from .reppoints_v2_detector import RepPointsV2Detector
+from .mask_reppoints_v2_detector import RepPointsV2MaskDetector
 from .retinanet import RetinaNet
 from .rpn import RPN
 from .scnet import SCNet
@@ -36,5 +38,5 @@ __all__ = [
     'RetinaNet', 'FCOS', 'GridRCNN', 'MaskScoringRCNN', 'RepPointsDetector',
     'FOVEA', 'FSAF', 'NASFCOS', 'PointRend', 'GFL', 'CornerNet', 'PAA',
     'YOLOV3', 'YOLACT', 'VFNet', 'DETR', 'TridentFasterRCNN', 'SparseRCNN',
-    'SCNet'
+    'SCNet', 'RepPointsV2Detector', 'RepPointsV2MaskDetector'
 ]

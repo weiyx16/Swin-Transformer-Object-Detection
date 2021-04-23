@@ -456,3 +456,66 @@ class FilterAnnotations(object):
                 if key in results:
                     results[key] = results[key][keep]
             return results
+
+
+@PIPELINES.register_module()
+class LoadRPDV2Annotations(object):
+    """Load mutiple types of annotations.
+
+    Args:
+        with_bbox (bool): Whether to parse and load the bbox annotation.
+             Default: True.
+        with_label (bool): Whether to parse and load the label annotation.
+            Default: True.
+        with_mask (bool): Whether to parse and load the mask annotation.
+             Default: False.
+        with_seg (bool): Whether to parse and load the semantic segmentation
+            annotation. Default: False.
+        poly2mask (bool): Whether to convert the instance masks from polygons
+            to bitmaps. Default: True.
+        file_client_args (dict): Arguments to instantiate a FileClient.
+            See :class:`mmcv.fileio.FileClient` for details.
+            Defaults to ``dict(backend='disk')``.
+    """
+    def __init__(self):
+        super(LoadRPDV2Annotations, self).__init__()
+
+    def _load_semantic_map_from_box(self, results):
+        gt_bboxes = results['gt_bboxes']
+        gt_labels = results['gt_labels']
+        pad_shape = results['pad_shape']
+        gt_areas = (gt_bboxes[:, 2] - gt_bboxes[:, 0]) * (gt_bboxes[:, 3] - gt_bboxes[:, 1])
+        gt_sem_map = np.zeros((80, int(pad_shape[0] / 8), int(pad_shape[1] / 8)), dtype=np.float32)
+        gt_sem_weights = np.zeros((80, int(pad_shape[0] / 8), int(pad_shape[1] / 8)), dtype=np.float32)
+
+        indexs = np.argsort(gt_areas)
+        for ind in indexs[::-1]:
+            box = gt_bboxes[ind]
+            box_mask = np.zeros((int(pad_shape[0] / 8), int(pad_shape[1] / 8)), dtype=np.int64)
+            box_mask[int(box[1] / 8):int(box[3] / 8) + 1, int(box[0] / 8):int(box[2] / 8) + 1] = 1
+            gt_sem_map[gt_labels[ind]][box_mask > 0] = 1
+            gt_sem_weights[gt_labels[ind]][box_mask > 0] = 1 / gt_areas[ind]
+
+        results['gt_sem_map'] = gt_sem_map
+        results['gt_sem_weights'] = gt_sem_weights
+
+        return results
+
+    def __call__(self, results):
+        """Call function to load multiple types annotations
+
+        Args:
+            results (dict): Result dict from :obj:`mmdet.CustomDataset`.
+
+        Returns:
+            dict: The dict contains loaded bounding box, label, mask and
+                semantic segmentation annotations.
+        """
+
+        results = self._load_semantic_map_from_box(results)
+        return results
+
+    def __repr__(self):
+        repr_str = self.__class__.__name__
+        repr_str += f'(with_bbox_semantic_map={True}, '
+        return repr_str
