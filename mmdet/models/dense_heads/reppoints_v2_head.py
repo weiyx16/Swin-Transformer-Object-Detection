@@ -138,7 +138,13 @@ class RepPointsV2Head(AnchorFreeHead):
                  transform_method='moment',
                  moment_mul=0.01,
                  mask_head=None,
+                 background_label=None,
                  **kwargs):
+        self.background_label = (
+            num_classes if background_label is None else background_label)
+        # background_label should be either 0 or num_classes
+        assert (self.background_label == 0
+                or self.background_label == num_classes)
         self.num_points = num_points
         self.point_feat_channels = point_feat_channels
         self.shared_stacked_convs = shared_stacked_convs
