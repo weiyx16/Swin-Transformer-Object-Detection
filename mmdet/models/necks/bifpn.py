@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from mmcv.cnn import ConvModule, xavier_init
+from mmcv.runner import auto_fp16
 
-from mmdet.core import auto_fp16
 from ..builder import NECKS
 
 
@@ -33,7 +33,7 @@ class Identity(nn.Module):
     
     def forward(self,x):
         return x 
-        
+
 class SingleBiFPN(nn.Module):
     def __init__(self, in_channels, out_channels, no_norm_on_lateral=True, conv_cfg=None,
                  norm_cfg=None,
@@ -154,10 +154,11 @@ class BiFPN(nn.Module):
         self.num_ins = len(in_channels)
         self.num_outs = num_outs
         self.num_repeat = num_repeat
-        self.fp16_enabled = False
-        self.no_norm_on_lateral = no_norm_on_lateral
         self.relu_before_extra_convs = relu_before_extra_convs
+        self.no_norm_on_lateral = no_norm_on_lateral
+        self.fp16_enabled = False
         self.upsample_cfg = upsample_cfg.copy()
+
         if end_level == -1:
             self.backbone_end_level = self.num_ins
             assert num_outs >= self.num_ins - start_level
@@ -173,7 +174,6 @@ class BiFPN(nn.Module):
         self.downsample_convs = nn.ModuleList()
         # add extra conv layers (e.g., RetinaNet)
         extra_levels = num_outs - self.backbone_end_level + self.start_level
-
         if self.add_extra_convs and extra_levels >= 1:
             for i in range(extra_levels):
                 if i == 0:
@@ -192,7 +192,7 @@ class BiFPN(nn.Module):
                     nn.MaxPool2d(3,2,1)
                     )
                 self.downsample_convs.append(extra_conv)
-        #
+
         out_channels = out_channels if self.add_extra_convs else self.in_channels[
             self.backbone_end_level-1]
         self.bi_fpn = nn.ModuleList()
@@ -205,8 +205,6 @@ class BiFPN(nn.Module):
             self.bi_fpn.append(SingleBiFPN(in_channels, self.out_channels, no_norm_on_lateral=no_norm_on_lateral,
                                            conv_cfg=conv_cfg, norm_cfg=norm_cfg, act_cfg=act_cfg, upsample_cfg=upsample_cfg))
 
-        #
-        print(self)
     # default init_weights for conv(msra) and norm in ConvModule
     def init_weights(self):
         """Initialize the weights of FPN module"""
@@ -214,7 +212,6 @@ class BiFPN(nn.Module):
             if isinstance(m, nn.Conv2d):
                 xavier_init(m, distribution='uniform')
 
-    @auto_fp16()
     def forward(self, inputs):
         """Forward function"""
         assert len(inputs) == len(self.in_channels)
@@ -241,15 +238,3 @@ class BiFPN(nn.Module):
         for i in range(self.num_repeat):
             outs = self.bi_fpn[i](outs)
         return tuple(outs)
-
-
-if __name__ == '__main__':
-    from torch.utils.tensorboard import SummaryWriter
-    import mmdet
-    model = mmdet.models.necks.BiFPN(
-        [256, 512, 512, 512], start_level=1, add_extra_convs=True)
-
-    writer = SummaryWriter(log_dir="./work_dirs")
-    writer.add_graph(model, (torch.randn(1, 256, 40, 40), torch.randn(
-        1, 512, 20, 20), torch.randn(1, 512, 10, 10), torch.randn(1, 512, 5, 5),))
-    writer.close()
