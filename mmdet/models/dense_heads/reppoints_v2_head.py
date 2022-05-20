@@ -662,7 +662,7 @@ class RepPointsV2Head(AnchorFreeHead):
             bbox_gt = unmap(bbox_gt, num_total_proposals, inside_flags)
             bbox_weights = unmap(bbox_weights, num_total_proposals, inside_flags)
             gt_inds = unmap(
-                sampling_result.gt_inds, num_total_proposals, inside_flags)
+                sampling_result.assign_result.gt_inds, num_total_proposals, inside_flags)
 
         return labels, label_weights, bbox_gt, bbox_weights, pos_inds, neg_inds, gt_inds
 
