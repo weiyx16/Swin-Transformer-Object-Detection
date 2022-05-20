@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from ..builder import LOSSES
 from .utils import weighted_loss
 
+from mmdet.core import bbox_overlaps
 
 @mmcv.jit(derivate=True, coderize=True)
 @weighted_loss
@@ -167,7 +168,7 @@ class RPDQualityFocalLoss(nn.Module):
                  beta=2.0,
                  reduction='mean',
                  loss_weight=1.0):
-        super(QualityFocalLoss, self).__init__()
+        super(RPDQualityFocalLoss, self).__init__()
         assert use_sigmoid is True, 'Only sigmoid in QFL supported now.'
         self.use_sigmoid = use_sigmoid
         self.beta = beta
@@ -217,7 +218,7 @@ class RPDQualityFocalLoss(nn.Module):
             loss_cls = self.loss_weight * quality_focal_loss(
                 pred,
                 (target,iou_score),
-                weight
+                weight,
                 beta=self.beta,
                 background_label=background_label,
                 reduction=reduction,
