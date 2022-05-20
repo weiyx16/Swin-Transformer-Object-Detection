@@ -111,7 +111,7 @@ model = dict(
             pos_weight=-1,
             debug=False),
         refine=dict(
-            assigner=dict(type='ATSSAssigner', topk=9, mask_center_sample=True),
+            assigner=dict(type='ATSSAssignerV2', topk=9, mask_center_sample=True),
             allowed_border=-1,
             pos_weight=-1,
             debug=False)),
