@@ -55,7 +55,36 @@ def py_sigmoid_focal_loss(pred,
     loss = weight_reduce_loss(loss, weight, reduction, avg_factor)
     return loss
 
+def separate_sigmoid_focal_loss(pred,
+                                target,
+                                weight=None,
+                                gamma=2.0,
+                                alpha=0.25,
+                                reduction='mean',
+                                avg_factor=None):
+    pred_sigmoid = pred.sigmoid()
+    target = target.type_as(pred)
 
+    pos_inds = target.eq(1)
+    neg_inds = target.lt(1)
+
+    pos_weights = weight[pos_inds]
+
+    pos_pred = pred_sigmoid[pos_inds]
+    neg_pred = pred_sigmoid[neg_inds]
+
+    pos_loss = -torch.log(pos_pred) * torch.pow(1 -
+                                                pos_pred, gamma) * pos_weights * alpha
+    neg_loss = -torch.log(1 - neg_pred) * \
+        torch.pow(neg_pred, gamma) * (1 - alpha)
+
+    if pos_pred.nelement() == 0:
+        loss = neg_loss.sum() / avg_factor
+    else:
+        loss = pos_loss.sum() / pos_weights.sum() + neg_loss.sum() / avg_factor
+
+    return loss
+    
 def sigmoid_focal_loss(pred,
                        target,
                        weight=None,
