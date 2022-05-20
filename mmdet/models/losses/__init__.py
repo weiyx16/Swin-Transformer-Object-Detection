@@ -3,7 +3,7 @@ from .ae_loss import AssociativeEmbeddingLoss
 from .balanced_l1_loss import BalancedL1Loss, balanced_l1_loss
 from .cross_entropy_loss import (CrossEntropyLoss, binary_cross_entropy,
                                  cross_entropy, mask_cross_entropy)
-from .focal_loss import FocalLoss, sigmoid_focal_loss
+from .focal_loss import FocalLoss, sigmoid_focal_loss, SEPFocalLoss
 from .gaussian_focal_loss import GaussianFocalLoss
 from .gfocal_loss import DistributionFocalLoss, QualityFocalLoss
 from .ghm_loss import GHMC, GHMR
@@ -18,7 +18,7 @@ from .varifocal_loss import VarifocalLoss
 
 __all__ = [
     'accuracy', 'Accuracy', 'cross_entropy', 'binary_cross_entropy',
-    'mask_cross_entropy', 'CrossEntropyLoss', 'sigmoid_focal_loss',
+    'mask_cross_entropy', 'CrossEntropyLoss', 'sigmoid_focal_loss', 'SEPFocalLoss',
     'FocalLoss', 'smooth_l1_loss', 'SmoothL1Loss', 'balanced_l1_loss',
     'BalancedL1Loss', 'mse_loss', 'MSELoss', 'iou_loss', 'bounded_iou_loss',
     'IoULoss', 'BoundedIoULoss', 'GIoULoss', 'DIoULoss', 'CIoULoss', 'GHMC',
