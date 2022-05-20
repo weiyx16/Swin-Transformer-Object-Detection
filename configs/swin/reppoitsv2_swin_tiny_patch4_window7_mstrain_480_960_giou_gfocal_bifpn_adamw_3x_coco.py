@@ -14,7 +14,7 @@ model = dict(
         patch_norm=True,
         use_checkpoint=False
     ),
-    neck=dict(in_channels=[96, 192, 384, 768]),
+    neck=dict(in_channels=[192, 384, 768]),
 )
 
 # multi-scale training
