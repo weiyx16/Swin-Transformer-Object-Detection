@@ -6,7 +6,7 @@ from mmcv.cnn import ConvModule, bias_init_with_prob, normal_init
 from mmcv.ops import DeformConv2d, CornerPool
 
 from mmdet.core import (PointGenerator, build_assigner, build_sampler,
-                        images_to_levels, multi_apply, multiclass_nms, unmap)
+                        images_to_levels, multi_apply, multiclass_nms_rpd, unmap)
 from ..builder import HEADS, build_loss, build_head
 from .anchor_free_head import AnchorFreeHead
 
@@ -1241,12 +1241,12 @@ class RepPointsV2Head(AnchorFreeHead):
         mlvl_scores = torch.cat([mlvl_scores, padding], dim=1)
         if nms:
             if self.mask_head:
-                det_bboxes, det_labels, inst_inds, _ = multiclass_nms(mlvl_bboxes, mlvl_scores,
+                det_bboxes, det_labels, inst_inds, _ = multiclass_nms_rpd(mlvl_bboxes, mlvl_scores,
                                                     cfg.score_thr, cfg.nms,
                                                     cfg.max_per_img, inst_inds=inst_inds)
                 return det_bboxes, det_labels, inst_inds
             else:
-                det_bboxes, det_labels, _ = multiclass_nms(mlvl_bboxes, mlvl_scores,
+                det_bboxes, det_labels, _ = multiclass_nms_rpd(mlvl_bboxes, mlvl_scores,
                                                     cfg.score_thr, cfg.nms,
                                                     cfg.max_per_img)
                 return det_bboxes, det_labels
