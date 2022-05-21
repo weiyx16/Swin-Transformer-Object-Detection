@@ -129,6 +129,8 @@ def multiclass_nms_rpd(multi_bboxes,
         if inst_inds is not None:
             inst_inds = inst_inds[:, None].expand(-1, num_classes)
     scores = multi_scores[:, :-1]
+    if inst_inds is not None:
+        inst_inds = inst_inds[scores > score_thr]
 
     labels = torch.arange(num_classes, dtype=torch.long)
     labels = labels.view(1, -1).expand_as(scores)
@@ -160,9 +162,6 @@ def multiclass_nms_rpd(multi_bboxes,
         bboxes = torch.cat([bboxes, bboxes.new_zeros(1, 4)], dim=0)
         scores = torch.cat([scores, scores.new_zeros(1)], dim=0)
         labels = torch.cat([labels, labels.new_zeros(1)], dim=0)
-    
-    if inst_inds is not None:
-        inst_inds = inst_inds[valid_mask]
 
     if bboxes.numel() == 0:
         if torch.onnx.is_in_onnx_export():
