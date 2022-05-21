@@ -171,7 +171,7 @@ class RepPointsV2MaskDetector(SingleStageDetector):
                 bbox2result(det_bboxes, det_labels, self.bbox_head.num_classes)
                 for det_bboxes, det_labels in bbox_list
             ]
-            return bbox_results[0]
+            return bbox_results
         else:
             bbox_results = [
                 bbox2result(det_bboxes, det_labels, self.bbox_head.num_classes)
@@ -182,7 +182,7 @@ class RepPointsV2MaskDetector(SingleStageDetector):
                 for i, (det_bboxes, det_labels, inst_inds) in enumerate(bbox_list)
             ]
             
-            return bbox_results[0], cls_segms[0]
+            return list(zip(bbox_results, cls_segms))
 
     def aug_test_simple(self, imgs, img_metas, rescale=False):
         """Test function with test time augmentation
@@ -196,94 +196,7 @@ class RepPointsV2MaskDetector(SingleStageDetector):
         Returns:
             list[ndarray]: bbox results of each class
         """
-        aug_bboxes = []
-        aug_scores = []
-        aug_inst_inds = []
-        last_inds = 0
-        last_inds_list = [last_inds]
-        pred_instances = []
-        for img, img_meta in zip(imgs, img_metas):
-            # only one image in the batch
-            # recompute feats to save memory
-            x = self.extract_feat(img)
-            outs = self.bbox_head(x)
-            pred_instances.append(copy.deepcopy(self.bbox_head.pred_instances))
-            det_bboxes, det_scores, inst_inds = self.bbox_head.get_bboxes(*outs, img_metas=img_meta,
-                                            cfg=self.test_cfg, rescale=False, nms=False)[0]
-            del outs
-            del x
-            torch.cuda.empty_cache()
-            aug_bboxes.append(det_bboxes)
-            aug_scores.append(det_scores)
-            inst_inds = inst_inds + last_inds
-            last_inds = torch.max(inst_inds).item() + 1
-            last_inds_list.append(last_inds)
-            aug_inst_inds.append(inst_inds)
-
-        # after merging, bboxes will be rescaled to the original image size
-        merged_bboxes, merged_scores = self.merge_aug_results(
-            aug_bboxes, aug_scores, img_metas)
-        merged_inst_inds = torch.cat(aug_inst_inds, dim=0)
-
-        det_bboxes, det_labels, inst_inds, keep = multiclass_nms(merged_bboxes, merged_scores,
-                                                self.test_cfg.score_thr,
-                                                self.test_cfg.nms,
-                                                self.test_cfg.max_per_img, inst_inds=merged_inst_inds)
-
-        # inst_inds to source one and split det_bbox to each img aug
-        rec_inst_inds = [[] for i in range(len(last_inds_list) - 1)]
-        rec_det_bboxes = [[] for i in range(len(last_inds_list) - 1)]
-        rec_det_labels = [[] for i in range(len(last_inds_list) - 1)]
-        for inds, db, dl in zip(inst_inds, det_bboxes, det_labels):
-            for aug_idx, (b_range, e_range) in enumerate(zip(last_inds_list[:-1], last_inds_list[1:])):
-                if inds >= b_range and inds < e_range:
-                    inds = inds - b_range
-                    rec_inst_inds[aug_idx].append(inds)
-                    rec_det_bboxes[aug_idx].append(db)
-                    rec_det_labels[aug_idx].append(dl)
-                    break
-
-        cls_segms = []
-        cls_scores = []
-        for img, img_meta, inds, db, dl, pred_instance in zip(imgs, img_metas, rec_inst_inds, rec_det_bboxes, rec_det_labels,pred_instances):
-            x = self.extract_feat(img)
-            if len(inds) > 0:
-                # the output of nms bbox have been flipped and rescale to ori img size
-                db = torch.stack(db, dim=0)
-                if img_meta[0]['flip']:
-                    db[:,:4] = bbox_flip(db[:,:4], img_shape = img_meta[0]['img_shape'], direction = img_meta[0]['flip_direction'])
-                _cls_segms,_cls_scores = self.mask2result([xl[[0]] for xl in x], torch.stack(dl, dim=0), torch.stack(inds, dim=0), img_meta[0], db, pred_instance,rescale=True,return_score=True)
-                cls_segms.append(_cls_segms)
-                cls_scores.append(_cls_scores)
-            del x
-            torch.cuda.empty_cache()
-
-        if rescale:
-            _det_bboxes = det_bboxes
-        else:
-            _det_bboxes = det_bboxes.clone()
-            _det_bboxes[:, :4] *= det_bboxes.new_tensor(
-                img_metas[0][0]['scale_factor'])
-        bbox_results = bbox2result(_det_bboxes, det_labels,
-                                   self.bbox_head.num_classes)
-        # arrange by cls
-        final_cls_segms = [[] for _ in range(self.bbox_head.num_classes)]
-        final_cls_scores = [[] for _ in range(self.bbox_head.num_classes)]
-        for i in range(len(cls_segms)):
-            for cls_idx in range(self.bbox_head.num_classes):
-                final_cls_scores[cls_idx].extend(cls_scores[i][cls_idx])
-                final_cls_segms[cls_idx].extend(cls_segms[i][cls_idx])
-
-        # re rank by bboxes scores     
-        for cls_idx in range(self.bbox_head.num_classes):
-            score = final_cls_scores[cls_idx]
-            if len(score)>0:
-                seg = final_cls_segms[cls_idx]
-                idx = np.argsort(-1*np.stack(score))
-                seg = [seg[i] for i in idx]
-                final_cls_segms[cls_idx]=seg
-        
-        return bbox_results, final_cls_segms
+        raise NotImplementedError
 
     def aug_test(self, imgs, img_metas, rescale=False):
         return self.aug_test_simple(imgs, img_metas, rescale)
