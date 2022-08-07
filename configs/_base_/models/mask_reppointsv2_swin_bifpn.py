@@ -51,8 +51,8 @@ model = dict(
             use_sigmoid=True,
             beta=2.0,
             loss_weight=1.0),
-        loss_bbox_init=dict(type='GIoULoss', loss_weight=1.0),
-        loss_bbox_refine=dict(type='GIoULoss', loss_weight=2.0),
+        loss_bbox_init=dict(type='RPDGIoULoss', loss_weight=1.0),
+        loss_bbox_refine=dict(type='RPDGIoULoss', loss_weight=2.0),
         loss_heatmap=dict(
             type='GaussianFocalLoss',
             alpha=2.0,
