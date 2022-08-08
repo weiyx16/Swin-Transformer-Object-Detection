@@ -172,7 +172,7 @@ def multiclass_nms_rpd(multi_bboxes,
         else:
             return bboxes, labels, None
 
-    dets, keep = batched_nms(bboxes, scores, labels, nms_cfg)
+    dets, keep = batched_nms(bboxes, scores.to(bboxes.dtype), labels, nms_cfg)
 
     if max_num > 0:
         dets = dets[:max_num]
