@@ -29,15 +29,15 @@ This repo contains the supported code and configuration files to reproduce objec
 
 ### RepPoints V2
 
-| Backbone | Pretrain | Lr Schd | box mAP | mask mAP | #params | FLOPs |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Swin-T | ImageNet-1K | 3x | 50.0 | - | 45M | 283G |
+| Backbone | Pretrain | Lr Schd | box mAP | mask mAP | #params | FLOPs | config | log | model |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |:---: |
+| Swin-T | ImageNet-1K | 3x | 50.0 | - | 45M | 283G | [config](configs/swin/reppoitsv2_swin_tiny_patch4_window7_mstrain_480_960_giou_gfocal_bifpn_adamw_3x_coco.py) | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.9/reppointsv2_swin_tiny_patch4_window7_3x.log.json) | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.9/reppointsv2_swin_tiny_patch4_window7_3x.pth) |
 
 ### Mask RepPoints V2
 
-| Backbone | Pretrain | Lr Schd | box mAP | mask mAP | #params | FLOPs |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Swin-T | ImageNet-1K | 3x | 50.3 | 43.6 | 47M | 292G |
+| Backbone | Pretrain | Lr Schd | box mAP | mask mAP | #params | FLOPs | config | log | model |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |:---: |
+| Swin-T | ImageNet-1K | 3x | 50.4 | 43.8 | 47M | 292G | [config](configs/swin/mask_reppoitsv2_swin_tiny_patch4_window7_mstrain_480_960_giou_gfocal_bifpn_adamw_3x_coco.py) | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.9/mask_reppointsv2_swin_tiny_patch4_window7_3x.log.json) | [github](https://github.com/SwinTransformer/storage/releases/download/v1.0.9/mask_reppointsv2_swin_tiny_patch4_window7_3x.pth) |
 
 **Notes**: 
 
