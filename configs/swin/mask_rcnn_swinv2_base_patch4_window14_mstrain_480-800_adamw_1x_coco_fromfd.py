@@ -1,12 +1,11 @@
 _base_ = [
-    '../_base_/models/mask_rcnn_swin_fpn.py',
+    '../_base_/models/mask_rcnn_swinv2_fpn.py',
     '../_base_/datasets/coco_instance.py',
     '../_base_/schedules/schedule_1x.py', '../_base_/default_runtime.py'
 ]
 
 model = dict(
     backbone=dict(
-        type='SwinTransformerV2',
         embed_dim=128,
         depths=[2, 2, 18, 2],
         num_heads=[4, 8, 16, 32],
