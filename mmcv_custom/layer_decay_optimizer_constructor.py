@@ -19,7 +19,7 @@ def get_num_layer_for_swin(var_name, num_max_layer, depths):
         return 0
     elif var_name.startswith("backbone.layers"):
         layer_id = int(var_name.split('.')[2])
-        block_id = int(var_name.split('.')[4])
+        block_id = var_name.split('.')[4]
         if block_id == 'reduction' or block_id == 'norm':
             return sum(depths[:layer_id + 1])
         layer_id = sum(depths[:layer_id]) + int(block_id)
