@@ -14,6 +14,7 @@ import torchvision
 from torch.optim import Optimizer
 from torch.utils import model_zoo
 from torch.nn import functional as F
+from scipy import interpolate
 
 import mmcv
 from mmcv.fileio import FileClient
@@ -350,6 +351,144 @@ def load_checkpoint(model,
                      table_pretrained.permute(1, 0).view(1, nH1, S1, S1),
                      size=(S2, S2), mode='bicubic')
                 state_dict[table_key] = table_pretrained_resized.view(nH2, L2).permute(1, 0)
+
+    # load state_dict
+    load_state_dict(model, state_dict, strict, logger)
+    return checkpoint
+
+
+def load_checkpoint_v2(model,
+                         filename,
+                         map_location='cpu',
+                         strict=False,
+                         rpe_interpolation='geo',
+                         logger=None):
+    """Load checkpoint from a file or URI.
+    Args:
+        model (Module): Module to load checkpoint.
+        filename (str): Accept local filepath, URL, ``torchvision://xxx``,
+            ``open-mmlab://xxx``. Please refer to ``docs/model_zoo.md`` for
+            details.
+        map_location (str): Same as :func:`torch.load`.
+        strict (bool): Whether to allow different params for the model and
+            checkpoint.
+        logger (:mod:`logging.Logger` or None): The logger for error message.
+    Returns:
+        dict or OrderedDict: The loaded checkpoint.
+    """
+    checkpoint = _load_checkpoint(filename, map_location)
+    # OrderedDict is a subclass of dict
+    if not isinstance(checkpoint, dict):
+        raise RuntimeError(
+            f'No state_dict found in checkpoint file {filename}')
+    # get state_dict from checkpoint
+    if 'state_dict' in checkpoint:
+        state_dict = checkpoint['state_dict']
+    elif 'model' in checkpoint:
+        state_dict = checkpoint['model']
+    elif 'module' in checkpoint:
+        state_dict = checkpoint['module']
+    else:
+        state_dict = checkpoint
+    # strip prefix of state_dict
+    if list(state_dict.keys())[0].startswith('module.'):
+        state_dict = {k[7:]: v for k, v in state_dict.items()}
+
+    # for MoBY, load model of online branch
+    if sorted(list(state_dict.keys()))[0].startswith('encoder'):
+        state_dict = {k.replace('encoder.', ''): v for k, v in state_dict.items() if k.startswith('encoder.')}
+
+    # reshape absolute position embedding for Swin
+    if state_dict.get('absolute_pos_embed') is not None:
+        absolute_pos_embed = state_dict['absolute_pos_embed']
+        N1, L, C1 = absolute_pos_embed.size()
+        N2, C2, H, W = model.absolute_pos_embed.size()
+        if N1 != N2 or C1 != C2 or L != H*W:
+            logger.warning("Error in loading absolute_pos_embed, pass")
+        else:
+            state_dict['absolute_pos_embed'] = absolute_pos_embed.view(N2, H, W, C2).permute(0, 3, 1, 2)
+
+    # interpolate position bias table if needed
+    relative_position_bias_table_keys = [k for k in state_dict.keys() if "relative_position_bias_table" in k]
+    for k in relative_position_bias_table_keys:
+        table_pretrained = state_dict[k]
+        table_current = model.state_dict()[k]
+        L1, nH1 = table_pretrained.size()
+        L2, nH2 = table_current.size()
+        if nH1 != nH2:
+            logger.warning(f"Error in loading {k}, pass")
+        else:
+            if L1 != L2:
+                if rpe_interpolation in ['bicubic', 'bilinear', 'nearest']:
+                    logger.info(f"Interpolate relative_position_bias_table using {rpe_interpolation}")
+                    S1 = int(L1 ** 0.5)
+                    S2 = int(L2 ** 0.5)
+                    table_pretrained_resized = F.interpolate(
+                        table_pretrained.permute(1, 0).view(1, nH1, S1, S1),
+                        size=(S2, S2), mode=rpe_interpolation)
+                    state_dict[k] = table_pretrained_resized.view(nH2, L2).permute(1, 0)
+                elif rpe_interpolation == 'outer_mask':
+                    logger.info("Interpolate relative_position_bias_table using outer mask.")
+                    S1 = int(L1 ** 0.5)
+                    S2 = int(L2 ** 0.5)
+                    pad_size = (S2 - S1) // 2
+                    padding = (pad_size, pad_size, pad_size, pad_size)
+
+                    all_rel_pos_bias = []
+                    for i in range(nH1):
+                        z = table_pretrained[:, i].view(S1, S1)
+                        all_rel_pos_bias.append(
+                            torch.nn.functional.pad(z, padding, "constant", z.min().item() - 3).view(L2, 1))
+                    new_rel_pos_bias = torch.cat(all_rel_pos_bias, dim=-1)
+                    state_dict[k] = new_rel_pos_bias
+                elif rpe_interpolation == 'geo':
+                    logger.info("Interpolate relative_position_bias_table using geo.")
+                    src_size = int(L1 ** 0.5)
+                    dst_size = int(L2 ** 0.5)
+
+                    def geometric_progression(a, r, n):
+                        return a * (1.0 - r ** n) / (1.0 - r)
+
+                    left, right = 1.01, 1.5
+                    while right - left > 1e-6:
+                        q = (left + right) / 2.0
+                        gp = geometric_progression(1, q, src_size // 2)
+                        if gp > dst_size // 2:
+                            right = q
+                        else:
+                            left = q
+
+                    # if q > 1.13492:
+                    #     q = 1.13492
+
+                    dis = []
+                    cur = 1
+                    for i in range(src_size // 2):
+                        dis.append(cur)
+                        cur += q ** (i + 1)
+
+                    r_ids = [-_ for _ in reversed(dis)]
+
+                    x = r_ids + [0] + dis
+                    y = r_ids + [0] + dis
+
+                    t = dst_size // 2.0
+                    dx = np.arange(-t, t + 0.1, 1.0)
+                    dy = np.arange(-t, t + 0.1, 1.0)
+
+                    logger.info("Original positions = %s" % str(x))
+                    logger.info("Target positions = %s" % str(dx))
+
+                    all_rel_pos_bias = []
+
+                    for i in range(nH1):
+                        z = table_pretrained[:, i].view(src_size, src_size).float().numpy()
+                        f_cubic = interpolate.interp2d(x, y, z, kind='cubic')
+                        all_rel_pos_bias.append(torch.Tensor(f_cubic(dx, dy)).contiguous().view(-1, 1).to(
+                            table_pretrained.device))
+
+                    new_rel_pos_bias = torch.cat(all_rel_pos_bias, dim=-1)
+                    state_dict[k] = new_rel_pos_bias
 
     # load state_dict
     load_state_dict(model, state_dict, strict, logger)
