@@ -398,6 +398,10 @@ def load_checkpoint_v2(model,
     if sorted(list(state_dict.keys()))[0].startswith('encoder'):
         state_dict = {k.replace('encoder.', ''): v for k, v in state_dict.items() if k.startswith('encoder.')}
 
+    if any([k.startswith('feature_model') for k in list(state_dict.keys())]):
+        state_dict = {k: v for k, v in state_dict.items() if not k.startswith('feature_model')}
+        state_dict = {k.replace('encoder.', ''): v for k, v in state_dict.items() if k.startswith('encoder.')}
+
     # reshape absolute position embedding for Swin
     if state_dict.get('absolute_pos_embed') is not None:
         absolute_pos_embed = state_dict['absolute_pos_embed']
