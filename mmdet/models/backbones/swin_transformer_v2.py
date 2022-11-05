@@ -120,8 +120,12 @@ class WindowAttention(nn.Module):
         else:
             relative_coords_table[:, :, :, 0] /= (self.window_size[0] - 1)
             relative_coords_table[:, :, :, 1] /= (self.window_size[1] - 1)
+        # relative_coords_table = torch.sign(relative_coords_table) * torch.log2(
+        #     torch.abs(relative_coords_table) + 1.0)  # log2
+        # it's our default.
+        relative_coords_table *= 8  # normalize to -8, 8
         relative_coords_table = torch.sign(relative_coords_table) * torch.log2(
-            torch.abs(relative_coords_table) + 1.0)  # log2
+            torch.abs(relative_coords_table) + 1.0) / np.log2(8)  # log8
 
         self.register_buffer("relative_coords_table", relative_coords_table)
 
@@ -174,6 +178,8 @@ class WindowAttention(nn.Module):
         relative_position_bias = relative_position_bias_table[self.relative_position_index.view(-1)].view(
             self.window_size[0] * self.window_size[1], self.window_size[0] * self.window_size[1], -1)  # Wh*Ww,Wh*Ww,nH
         relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()  # nH, Wh*Ww, Wh*Ww
+        # it's our default setting
+        relative_position_bias = 16 * torch.sigmoid(relative_position_bias)
         attn = attn + relative_position_bias.unsqueeze(0)
 
         if mask is not None:

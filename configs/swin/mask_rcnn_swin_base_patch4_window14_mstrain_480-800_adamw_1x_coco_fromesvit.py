@@ -11,7 +11,7 @@ model = dict(
         num_heads=[4, 8, 16, 32],
         window_size=14,
         ape=False,
-        drop_path_rate=0.2,
+        drop_path_rate=0.3,
         patch_norm=True,
         use_checkpoint=False
     ),
@@ -62,11 +62,13 @@ train_pipeline = [
 data = dict(train=dict(pipeline=train_pipeline))
 
 optimizer = dict(_delete_=True, type='AdamW', lr=0.0001, betas=(0.9, 0.999), weight_decay=0.05,
-                 constructor='LayerDecayOptimizerConstructor', 
-                 paramwise_cfg=dict(num_layers=24, layer_decay_rate=0.8, depths=[2, 2, 18, 2]))
-                #  paramwise_cfg=dict(custom_keys={'absolute_pos_embed': dict(decay_mult=0.),
-                #                                  'relative_position_bias_table': dict(decay_mult=0.),
-                #                                  'norm': dict(decay_mult=0.)}))
+                #  constructor='LayerDecayOptimizerConstructor', 
+                #  paramwise_cfg=dict(num_layers=24, layer_decay_rate=0.8, depths=[2, 2, 18, 2]))
+                 paramwise_cfg=dict(custom_keys={'absolute_pos_embed': dict(decay_mult=0.),
+                                                 'relative_position_bias_table': dict(decay_mult=0.),
+                                                 'logit_scale': dict(decay_mult=0.),
+                                                 'rpe_mlp': dict(decay_mult=0.),
+                                                 'norm': dict(decay_mult=0.)}))
 lr_config = dict(step=[9, 11])
 runner = dict(type='EpochBasedRunnerAmp', max_epochs=12)
 
